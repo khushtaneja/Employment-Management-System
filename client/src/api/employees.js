@@ -1,25 +1,52 @@
-import api from './axios';
+import { db } from '../config/firebase';
+import { 
+  collection, 
+  getDocs, 
+  doc, 
+  getDoc, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc 
+} from 'firebase/firestore';
+
+const EMPLOYEES_COLLECTION = 'employees';
 
 export const getEmployees = async () => {
-  const { data } = await api.get('/employees');
-  return data;
+  const querySnapshot = await getDocs(collection(db, EMPLOYEES_COLLECTION));
+  return querySnapshot.docs.map(doc => ({
+    _id: doc.id,
+    ...doc.data()
+  }));
 };
 
 export const getEmployee = async (id) => {
-  const { data } = await api.get(`/employees/${id}`);
-  return data;
+  const docRef = doc(db, EMPLOYEES_COLLECTION, id);
+  const docSnap = await getDoc(docRef);
+  if (docSnap.exists()) {
+    return { _id: docSnap.id, ...docSnap.data() };
+  } else {
+    throw new Error('Employee not found');
+  }
 };
 
 export const createEmployee = async (employeeData) => {
-  const { data } = await api.post('/employees', employeeData);
-  return data;
+  const docRef = await addDoc(collection(db, EMPLOYEES_COLLECTION), {
+    ...employeeData,
+    createdAt: new Date().toISOString()
+  });
+  return { _id: docRef.id, ...employeeData };
 };
 
 export const updateEmployee = async (id, employeeData) => {
-  const { data } = await api.put(`/employees/${id}`, employeeData);
-  return data;
+  const docRef = doc(db, EMPLOYEES_COLLECTION, id);
+  await updateDoc(docRef, {
+    ...employeeData,
+    updatedAt: new Date().toISOString()
+  });
+  return { _id: id, ...employeeData };
 };
 
 export const deleteEmployee = async (id) => {
-  await api.delete(`/employees/${id}`);
+  const docRef = doc(db, EMPLOYEES_COLLECTION, id);
+  await deleteDoc(docRef);
 };

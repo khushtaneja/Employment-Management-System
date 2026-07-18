@@ -1,30 +1,49 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { login as loginApi, register as registerApi } from '../api/auth';
+import { login as loginApi, register as registerApi, logout as logoutApi } from '../api/auth';
+import { auth, db } from '../config/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(null);
+  const [token, setToken] = useState(null); // Firebase handles tokens, but we keep the state for compatibility
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        // User is signed in
+        const tokenStr = await firebaseUser.getIdToken();
+        setToken(tokenStr);
+        
+        // Fetch custom user data (role, etc.)
+        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+        let userData = { role: 'User', username: firebaseUser.email };
+        if (userDoc.exists()) {
+          userData = userDoc.data();
+        }
+        
+        setUser({
+          _id: firebaseUser.uid,
+          email: firebaseUser.email,
+          ...userData
+        });
+      } else {
+        // User is signed out
+        setUser(null);
+        setToken(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const login = async (credentials) => {
+    // The actual login happens in the API, which triggers onAuthStateChanged
     const data = await loginApi(credentials);
-    setToken(data.token);
-    const userData = { username: data.username, role: data.role, email: data.email };
-    setUser(userData);
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(userData));
     return data;
   };
 
@@ -32,11 +51,8 @@ export const AuthProvider = ({ children }) => {
     return await registerApi(userData);
   };
 
-  const logout = () => {
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+  const logout = async () => {
+    await logoutApi();
   };
 
   const isAdmin = user?.role === 'Admin';

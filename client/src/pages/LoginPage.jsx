@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
 const LoginPage = () => {
-  const [form, setForm] = useState({ username: '', password: '' });
+  const [form, setForm] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -17,7 +17,7 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.username || !form.password) {
+    if (!form.email || !form.password) {
       toast.error('Please fill in all fields');
       return;
     }
@@ -27,16 +27,16 @@ const LoginPage = () => {
       toast.success('Welcome back!');
       navigate('/dashboard');
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Login failed');
+      // Firebase throws errors with a .message property, unlike axios which uses error.response.data
+      let errorMsg = error.message;
+      if (error.code === 'auth/invalid-credential') errorMsg = 'Invalid email or password';
+      if (error.code === 'auth/user-not-found') errorMsg = 'User not found';
+      toast.error(errorMsg || 'Login failed');
     } finally {
       setLoading(false);
     }
   };
 
-  const fillDemo = (role) => {
-    if (role === 'admin') setForm({ username: 'admin', password: 'Admin@123' });
-    else setForm({ username: 'user', password: 'User@123' });
-  };
 
   return (
     <div className="auth-page">
@@ -57,16 +57,16 @@ const LoginPage = () => {
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Username</label>
+            <label>Email Address</label>
             <div className="input-icon-wrap">
               <RiUserLine className="input-icon" />
               <input
-                type="text"
-                name="username"
-                value={form.username}
+                type="email"
+                name="email"
+                value={form.email}
                 onChange={handleChange}
-                placeholder="Enter your username"
-                autoComplete="username"
+                placeholder="Enter your email"
+                autoComplete="email"
               />
             </div>
           </div>
@@ -102,17 +102,7 @@ const LoginPage = () => {
           </button>
         </form>
 
-        <div className="demo-section">
-          <p className="demo-label">Quick Demo Login</p>
-          <div className="demo-btns">
-            <button className="demo-btn admin" onClick={() => fillDemo('admin')}>
-              👑 Admin
-            </button>
-            <button className="demo-btn user" onClick={() => fillDemo('user')}>
-              👤 User
-            </button>
-          </div>
-        </div>
+
 
         <p className="auth-link">
           Don't have an account?{' '}

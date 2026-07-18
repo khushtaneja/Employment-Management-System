@@ -29,7 +29,7 @@ const DashboardPage = () => {
         const data = await getEmployees();
         setEmployees(data);
       } catch {
-        // handled by axios interceptor
+        // handled locally or ignored
       } finally {
         setLoading(false);
       }

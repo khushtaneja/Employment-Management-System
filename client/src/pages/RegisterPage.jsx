@@ -44,7 +44,11 @@ const RegisterPage = () => {
       toast.success('Account created successfully! Please log in.');
       navigate('/login');
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Registration failed');
+      let errorMsg = error.message;
+      if (error.code === 'auth/email-already-in-use') errorMsg = 'Email is already in use.';
+      if (error.code === 'auth/invalid-email') errorMsg = 'Invalid email address.';
+      if (error.code === 'auth/operation-not-allowed') errorMsg = 'Email/password accounts are not enabled. Please enable them in your Firebase Console.';
+      toast.error(errorMsg || 'Registration failed');
     } finally {
       setLoading(false);
     }
